@@ -1,7 +1,8 @@
-#define HESpin1 A2
+int ThrottlePin = A0;
 const int HallPin = 2;
 int Relay2 = 10;
 
+int ThrottlePosition = 0;
 int long ValveOpeningTime = 0;
 int long CurrentTDC, TimeSinceCurrentTDC;
 int long PreviousTDC = 0;
@@ -30,11 +31,14 @@ void ValveOpening() {
     TimeSinceCurrentTDC = millis() - CurrentTDC;
     if (TimeSinceCurrentTDC >= ValveOpeningTime) {
       digitalWrite(Relay2, LOW);
+      Serial.print("Time Running: ");
       Serial.print (CurrentTDC);
-      Serial.print("\t");
+      Serial.print("\t Rev Split Time: ");
       Serial.print(TimeSinceCurrentTDC);
-      Serial.print("\t");
-      Serial.println(ValveOpeningTime);
+      Serial.print("\t Valve Opening Time: ");
+      Serial.print(ValveOpeningTime);
+      Serial.print("\t Throttle Position: ");
+      Serial.println(ThrottlePosition);
       Trip = false;
     }
   }
@@ -54,20 +58,38 @@ int CalculateValveOpeningTime() {
   //needs a feedback loop to vary the value based on time since last TDC.
   int StartUpValveOpening = 500;
   float ValveOpeningMultiplier = CalculateValveOpeningMultiplier();
+  //float ThrottleMultiplier = CalculateThrottleMultiplier();
   if (PreviousTDC == 0) {
     return (StartUpValveOpening);
   }
   if (CurrentTDC - PreviousTDC >= 2000) {
     return (StartUpValveOpening);
   }
-  return ((CurrentTDC - PreviousTDC) * ValveOpeningMultiplier);
+  return ((CurrentTDC - PreviousTDC) * ValveOpeningMultiplier/* * ThrottleMultiplier*/);
 }
 
 float CalculateValveOpeningMultiplier() {
-  return (.2);
+  if (CurrentTDC - PreviousTDC < 50) {
+    return(.05);
+  }
+  else if (50 <= CurrentTDC - PreviousTDC < 100) {
+    return(.1);
+  }
+  else {
+    return(.2);
+  }
 }
 
-
+// float CalculateThrottleMultiplier() {
+//   float IdleThrottleMultiplier = 1;
+//   ThrottlePosition = analogRead(ThrottlePin);
+//   if (ThrottlePosition <= 50) {
+//     return(IdleThrottleMultiplier);
+//   }
+//   else {
+//     return (ThrottlePosition / 5000);
+//   } 
+// }
 
 
 
