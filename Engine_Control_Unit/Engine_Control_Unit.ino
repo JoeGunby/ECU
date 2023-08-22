@@ -1,62 +1,90 @@
 int ThrottlePin = A0;
-const int HallPin = 2;
+const int InletHallPin = 2;
+const int ExhaustHallPin = 3;
 int Relay2 = 10;
+int Relay3 = 11;
 
 int ThrottlePosition = 0;
-int long ValveOpeningTime = 0;
+int long InletValveOpeningTime = 0;
+int long ExhaustValveOpeningTime = 0;
 int long CurrentTDC, TimeSinceCurrentTDC;
 int long PreviousTDC = 0;
-bool Trip = false;
+bool InletTrip = false;
+bool ExhaustTrip = false;
 
 
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
-  pinMode(HallPin, INPUT);
+  pinMode(InletHallPin, INPUT);
+  pinMode(ExhaustHallPin, INPUT);
   pinMode(Relay2, OUTPUT);
+  pinMode(Relay3, OUTPUT);
   digitalWrite(Relay2, LOW);
-  attachInterrupt(digitalPinToInterrupt(HallPin), ValveTrigger, FALLING);
+  digitalWrite(Relay3, LOW);
+  attachInterrupt(digitalPinToInterrupt(InletHallPin), InletValveTrigger, FALLING);
+  attachInterrupt(digitalPinToInterrupt(ExhaustHallPin), ExhaustValveTrigger, FALLING);
 }
 
 void loop() {
-  ValveOpening();
+  InletValveOpening();
+  ExhaustValveOpening();
 }
 
 
-void ValveOpening() {
+void InletValveOpening() {
 // Delay factor for valve trigger  
-  if (Trip == true) {
-    ValveOpeningTime = CalculateValveOpeningTime();
+  if (InletTrip == true) {
+    InletValveOpeningTime = CalculateValveOpeningTime();
     digitalWrite(Relay2, HIGH);
     TimeSinceCurrentTDC = millis() - CurrentTDC;
-    if (TimeSinceCurrentTDC >= ValveOpeningTime) {
+    if (TimeSinceCurrentTDC >= InletValveOpeningTime) {
       digitalWrite(Relay2, LOW);
       Serial.print("Time Running: ");
       Serial.print (CurrentTDC);
       Serial.print("\t Rev Split Time: ");
       Serial.print(TimeSinceCurrentTDC);
       Serial.print("\t Valve Opening Time: ");
-      Serial.print(ValveOpeningTime);
+      Serial.print(InletValveOpeningTime);
       Serial.print("\t Throttle Position: ");
       Serial.println(ThrottlePosition);
-      Trip = false;
+      InletTrip = false;
     }
   }
 }
 
+void ExhaustValveOpening() {
+  // Delay factor for valve trigger  
+  if (ExhaustTrip == true) {
+    ExhaustValveOpeningTime = CalculateValveOpeningTime();
+    digitalWrite(Relay3, HIGH);
+    TimeSinceCurrentTDC = millis() - CurrentTDC;
+    if (TimeSinceCurrentTDC >= ExhaustValveOpeningTime) {
+      ExhaustTrip = false;
+    }
 
-void ValveTrigger() {
+}
+
+void InletValveTrigger() {
   //millis won't run within an interupt therefore must be in loop.
   //setting values for the trigger in the loop to be called.
-  Trip = true;
+  InletTrip = true;
   PreviousTDC = CurrentTDC;
   CurrentTDC = millis();
-  }
+}
+
+void ExhaustValveTrigger() {
+  //millis won't run within an interupt therefore must be in loop.
+  //setting values for the trigger in the loop to be called.
+  ExhaustTrip = true;
+  PreviousTDC = CurrentTDC;
+  CurrentTDC = millis();
+}
 
 int CalculateValveOpeningTime() {
   //Set default value of .2 for now as a proportion of the stroke to open the valve,
   //needs a feedback loop to vary the value based on time since last TDC.
-  int StartUpValveOpening = 500;
+  int StartUpValveOpening = 200;
   float ValveOpeningMultiplier = CalculateValveOpeningMultiplier();
   //float ThrottleMultiplier = CalculateThrottleMultiplier();
   if (PreviousTDC == 0) {
